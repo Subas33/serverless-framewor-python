@@ -1,0 +1,6 @@
+*.js
+node_modules
+__pycache__
+.serverless
+package-lock.json
+package.json

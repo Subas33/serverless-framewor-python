@@ -1,0 +1,58 @@
+service: image-upload-module
+
+provider:
+  name: aws
+  runtime: python3.8
+  stage: dev
+  region: us-east-1
+
+plugins:
+  - serverless-python-requirements
+
+functions:
+  uploadImage:
+    handler: handler.upload_image
+    events:
+      - http:
+          path: upload
+          method: post
+
+  generateThumbnail:
+    handler: handler.generate_thumbnail
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - ThumbnailQueue
+              - Arn
+
+  getImage:
+    handler: handler.get_image
+    events:
+      - http:
+          path: image/{imageName}
+          method: get
+
+  getThumbnail:
+    handler: handler.get_thumbnail
+    events:
+      - http:
+          path: thumbnail/{imageName}
+          method: get
+
+resources:
+  Resources:
+    ImageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:service}-images
+        NotificationConfiguration:
+          QueueConfigurations:
+            - QueueArn: !GetAtt ThumbnailQueue.Arn
+              Events:
+                - s3:ObjectCreated:*
+
+    ThumbnailQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-thumbnail-queue
